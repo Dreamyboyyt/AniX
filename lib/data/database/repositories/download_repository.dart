@@ -229,7 +229,7 @@ class DownloadRepository {
   /// Get total download size (completed)
   Future<int> getTotalDownloadedSize() async {
     final tasks = await getCompletedTasks();
-    return tasks.fold(0, (sum, task) => sum + task.downloadedBytes);
+    return tasks.fold<int>(0, (sum, task) => sum + task.downloadedBytes);
   }
 
   /// Count active downloads

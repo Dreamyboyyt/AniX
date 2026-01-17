@@ -1,6 +1,7 @@
 import 'package:isar_community/isar.dart';
 import '../database.dart';
 import '../../models/anime.dart';
+import '../../models/download_task.dart';
 import '../../../core/utils/logger.dart';
 
 /// Repository for Anime operations
