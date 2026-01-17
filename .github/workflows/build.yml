@@ -40,6 +40,15 @@ jobs:
       - name: Generate code (Isar)
         run: dart run build_runner build --delete-conflicting-outputs
 
+      - name: Verify generated files
+        run: |
+          ls -la lib/data/models
+          test -f lib/data/models/anime.g.dart
+          test -f lib/data/models/episode.g.dart
+          test -f lib/data/models/download_task.g.dart
+          test -f lib/data/models/download_segment.g.dart
+          test -f lib/data/models/app_settings.g.dart
+
       - name: Analyze code
         run: flutter analyze --no-fatal-infos
         continue-on-error: true
