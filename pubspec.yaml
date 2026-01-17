@@ -38,7 +38,7 @@ dependencies:
   saf: ^1.0.4
 
   # Image Caching
-  cached_network_image: ^3.4.1
+  cached_network_image: ^3.3.1
 
   # UI Components
   flutter_animate: ^4.5.2
@@ -74,7 +74,7 @@ dev_dependencies:
 
 dependency_overrides:
   # Force compatible version to avoid AGP 8.x issues
-  package_info_plus: ^5.0.1
+  package_info_plus: ^8.0.0
 
 flutter:
   uses-material-design: true
