@@ -25,18 +25,9 @@ subprojects {
     afterEvaluate {
         if (project.hasProperty("android")) {
             val android = project.extensions.findByName("android")
-            if (android != null) {
-                when (android) {
-                    is com.android.build.gradle.LibraryExtension -> {
-                        if (android.compileSdk == null) {
-                            android.compileSdk = 36
-                        }
-                    }
-                    is com.android.build.gradle.AppExtension -> {
-                        if (android.compileSdkVersion == null) {
-                            android.compileSdk(36)
-                        }
-                    }
+            if (android is com.android.build.gradle.LibraryExtension) {
+                if (android.compileSdk == null) {
+                    android.compileSdk = 36
                 }
             }
         }
