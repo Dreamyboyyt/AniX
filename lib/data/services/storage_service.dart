@@ -3,7 +3,6 @@ import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
 import 'package:saf/saf.dart';
 import '../../core/constants/app_constants.dart';
-import '../../core/errors/app_exception.dart';
 import '../../core/utils/logger.dart';
 import '../../core/utils/extensions.dart';
 import '../database/repositories/settings_repository.dart';
@@ -31,7 +30,7 @@ class StorageService {
       
       if (granted == true) {
         // Get the paths
-        final paths = await _saf.getPersistedPermissionDirectories();
+        final paths = await Saf.getPersistedPermissionDirectories();
         if (paths != null && paths.isNotEmpty) {
           _downloadBasePath = paths.first;
           
@@ -57,7 +56,7 @@ class StorageService {
   /// Check if SAF permission is granted
   Future<bool> hasSafPermission() async {
     try {
-      final paths = await _saf.getPersistedPermissionDirectories();
+      final paths = await Saf.getPersistedPermissionDirectories();
       return paths != null && paths.isNotEmpty;
     } catch (e) {
       return false;

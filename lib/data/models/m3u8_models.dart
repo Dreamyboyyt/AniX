@@ -1,4 +1,4 @@
-/// Models for M3U8/HLS parsing (not Isar - just plain Dart classes)
+// Models for M3U8/HLS parsing
 
 /// Represents a master M3U8 playlist
 class MasterPlaylist {

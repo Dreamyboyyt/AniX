@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors/crash_handler.dart';
-import '../../core/theme/app_colors.dart';
 import '../../providers/app_providers.dart';
 import '../home/home_screen.dart';
 import '../downloads/downloads_screen.dart';

@@ -94,29 +94,40 @@ class DownloadRepository {
 
   /// Update task status
   Future<void> updateTaskStatus(String taskId, String status, {String? errorMessage}) async {
-    final updates = DownloadTasksCompanion(
-      status: Value(status),
-      errorMessage: Value(errorMessage),
-    );
-
+    DownloadTasksCompanion updates;
+    
     // Add timestamps based on status
-    DownloadTasksCompanion finalUpdates;
     switch (status) {
       case 'downloading':
-        finalUpdates = updates.copyWith(startedAt: Value(DateTime.now()));
+        updates = DownloadTasksCompanion(
+          status: Value(status),
+          errorMessage: Value(errorMessage),
+          startedAt: Value(DateTime.now()),
+        );
         break;
       case 'completed':
-        finalUpdates = updates.copyWith(completedAt: Value(DateTime.now()));
+        updates = DownloadTasksCompanion(
+          status: Value(status),
+          errorMessage: Value(errorMessage),
+          completedAt: Value(DateTime.now()),
+        );
         break;
       case 'paused':
-        finalUpdates = updates.copyWith(pausedAt: Value(DateTime.now()));
+        updates = DownloadTasksCompanion(
+          status: Value(status),
+          errorMessage: Value(errorMessage),
+          pausedAt: Value(DateTime.now()),
+        );
         break;
       default:
-        finalUpdates = updates;
+        updates = DownloadTasksCompanion(
+          status: Value(status),
+          errorMessage: Value(errorMessage),
+        );
     }
 
     await (_db.update(_db.downloadTasks)..where((t) => t.taskId.equals(taskId)))
-        .write(finalUpdates);
+        .write(updates);
     AppLogger.i('Task $taskId status updated to $status');
   }
 
@@ -229,38 +240,3 @@ class DownloadRepository {
   }
 }
 
-extension on DownloadTasksCompanion {
-  DownloadTasksCompanion copyWith({
-    Value<DateTime?>? startedAt,
-    Value<DateTime?>? completedAt,
-    Value<DateTime?>? pausedAt,
-  }) {
-    return DownloadTasksCompanion(
-      id: id,
-      taskId: taskId,
-      animeId: animeId,
-      animeTitle: animeTitle,
-      episodeNumber: episodeNumber,
-      episodeTitle: episodeTitle,
-      masterM3u8Url: masterM3u8Url,
-      selectedQuality: selectedQuality,
-      selectedLanguage: selectedLanguage,
-      audioGroupId: audioGroupId,
-      downloadFolder: downloadFolder,
-      segmentListPath: segmentListPath,
-      totalSegments: totalSegments,
-      downloadedSegments: downloadedSegments,
-      totalBytes: totalBytes,
-      downloadedBytes: downloadedBytes,
-      status: status,
-      errorMessage: errorMessage,
-      retryCount: retryCount,
-      createdAt: createdAt,
-      startedAt: startedAt ?? this.startedAt,
-      completedAt: completedAt ?? this.completedAt,
-      pausedAt: pausedAt ?? this.pausedAt,
-      cookies: cookies,
-      referer: referer,
-    );
-  }
-}

@@ -22,7 +22,6 @@ class ScraperService {
 
   HeadlessInAppWebView? _webView;
   Completer<String?>? _m3u8Completer;
-  String? _capturedM3u8Url;
   String? _capturedReferer;
   String? _capturedCookies;
 
@@ -99,7 +98,6 @@ class ScraperService {
           if ((url.contains('.m3u8') || url.contains('master.txt')) && 
               !url.contains('cdn-cgi')) {
             AppLogger.i('Captured M3U8 URL: $url');
-            _capturedM3u8Url = url;
             
             if (!_m3u8Completer!.isCompleted) {
               _m3u8Completer!.complete(url);
@@ -223,13 +221,6 @@ class ScraperService {
     required MasterPlaylist masterPlaylist,
     required StreamSelection selection,
   }) async {
-    // Build custom master playlist
-    final customM3u8 = M3U8Parser.buildCustomMasterPlaylist(
-      videoStream: selection.videoStream,
-      audioTrack: selection.audioTrack,
-      baseDomain: masterPlaylist.baseDomain ?? '',
-    );
-
     // For streaming, we return the video stream URL directly
     // The player will handle the M3U8 parsing
     return selection.videoStream.url;
@@ -239,9 +230,6 @@ class ScraperService {
   String _cookiesToNetscapeString(List<Cookie> cookies) {
     final buffer = StringBuffer();
     for (final cookie in cookies) {
-      final domain = cookie.domain?.startsWith('.') == true 
-          ? cookie.domain! 
-          : '.${cookie.domain ?? ''}';
       buffer.write('${cookie.name}=${cookie.value}; ');
     }
     return buffer.toString().trim();

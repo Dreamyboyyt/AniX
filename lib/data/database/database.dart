@@ -161,7 +161,7 @@ class AppDatabase extends _$AppDatabase {
   }
 
   /// Close the database
-  static Future<void> close() async {
+  static Future<void> closeDatabase() async {
     await _instance?.close();
     _instance = null;
     AppLogger.i('Database closed');
