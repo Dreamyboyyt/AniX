@@ -2,6 +2,7 @@ import 'package:isar_community/isar.dart';
 import '../database.dart';
 import '../../models/anime.dart';
 import '../../models/download_task.dart';
+import '../../models/episode.dart';
 import '../../../core/utils/logger.dart';
 
 /// Repository for Anime operations
@@ -84,7 +85,7 @@ class AnimeRepository {
   /// Delete anime and related episodes
   Future<void> delete(String animeId) async {
     await _db.writeTxn(() async {
-      await _db.episodes.filter().animeIdEqualTo(animeId).deleteAll();
+      await _db.collection<Episode>().filter().animeIdEqualTo(animeId).deleteAll();
       await _db.animes.filter().animeIdEqualTo(animeId).deleteAll();
     });
     AppLogger.i('Deleted anime: $animeId');
