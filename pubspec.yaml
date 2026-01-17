@@ -4,7 +4,7 @@ publish_to: 'none'
 version: 1.0.0+1
 
 environment:
-  sdk: '>=3.2.0 <4.0.0'
+  sdk: '>=3.4.3 <4.0.0'
 
 dependencies:
   flutter:
@@ -23,10 +23,10 @@ dependencies:
   dio: ^5.7.0
   connectivity_plus: ^6.1.1
 
-  # WebView for scraping
+  # WebView for scraping (beta version for AGP 8.x compatibility)
   flutter_inappwebview: ^6.1.5
 
-  # Video Player (media_kit - Dartotsu fork for AGP 8.x compatibility)
+  # Video Player (media_kit - Schnitzel5 fork for AGP 8.x compatibility)
   media_kit:
     git:
       url: https://github.com/Schnitzel5/media-kit.git
@@ -41,7 +41,7 @@ dependencies:
       path: libs/universal/media_kit_libs_video
 
   # Permissions
-  permission_handler: ^12.0.1
+  permission_handler: ^12.0.0+1
 
   # Storage Access Framework
   saf: ^1.0.4
@@ -73,6 +73,12 @@ dependencies:
 
   # Cupertino icons
   cupertino_icons: ^1.0.8
+  
+  # Keep screen awake during playback
+  wakelock_plus: ^1.3.2
+  
+  # Package info
+  package_info_plus: ^8.3.0
 
 dev_dependencies:
   flutter_test:
@@ -80,6 +86,9 @@ dev_dependencies:
   flutter_lints: ^5.0.0
   build_runner: ^2.4.13
   drift_dev: ^2.22.1
+
+dependency_overrides:
+  collection: ^1.19.1
 
 flutter:
   uses-material-design: true
