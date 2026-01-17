@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'core/theme/app_theme.dart';
+import 'data/models/app_settings.dart';
 import 'providers/app_providers.dart';
 import 'features/main/main_screen.dart';
 import 'features/permissions/permissions_screen.dart';

@@ -1,12 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../../data/database/database.dart';
+import '../../data/models/anime.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/anime_grid.dart';
 import '../../widgets/empty_state.dart';
 import '../search/search_screen.dart';
 
-/// Home screen showing bookmarked anime library
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
 
@@ -17,35 +16,16 @@ class HomeScreen extends ConsumerWidget {
     return Scaffold(
       body: CustomScrollView(
         slivers: [
-          // App Bar
           SliverAppBar(
             floating: true,
-            title: const Text(
-              'AniX',
-              style: TextStyle(
-                fontWeight: FontWeight.bold,
-                fontSize: 24,
-              ),
-            ),
-            actions: [
-              IconButton(
-                icon: const Icon(Icons.search),
-                onPressed: () => _openSearch(context),
-              ),
-            ],
+            title: const Text('AniX', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 24)),
+            actions: [IconButton(icon: const Icon(Icons.search), onPressed: () => _openSearch(context))],
           ),
-
-          // Content
           bookmarkedAnime.when(
             data: (animeList) {
               if (animeList.isEmpty) {
-                return SliverFillRemaining(
-                  child: EmptyStates.noBookmarks(
-                    onAction: () => _openSearch(context),
-                  ),
-                );
+                return SliverFillRemaining(child: EmptyStates.noBookmarks(onAction: () => _openSearch(context)));
               }
-
               return SliverAnimeGrid(
                 animeList: animeList,
                 onAnimeTap: (anime) => _openAnimeDetails(context, anime.animeId),
@@ -53,16 +33,8 @@ class HomeScreen extends ConsumerWidget {
                 progressMap: _buildProgressMap(animeList),
               );
             },
-            loading: () => const SliverAnimeGrid(
-              animeList: [],
-              isLoading: true,
-            ),
-            error: (error, stack) => SliverFillRemaining(
-              child: EmptyStates.error(
-                message: error.toString(),
-                onRetry: () => ref.invalidate(bookmarkedAnimeProvider),
-              ),
-            ),
+            loading: () => const SliverAnimeGrid(animeList: [], isLoading: true),
+            error: (error, stack) => SliverFillRemaining(child: EmptyStates.error(message: error.toString(), onRetry: () => ref.invalidate(bookmarkedAnimeProvider))),
           ),
         ],
       ),
@@ -79,17 +51,9 @@ class HomeScreen extends ConsumerWidget {
     return map;
   }
 
-  void _openSearch(BuildContext context) {
-    Navigator.push(
-      context,
-      MaterialPageRoute(builder: (_) => const SearchScreen()),
-    );
-  }
+  void _openSearch(BuildContext context) => Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen()));
 
   void _openAnimeDetails(BuildContext context, String animeId) {
-    // TODO: Navigate to anime details screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Opening anime: $animeId')),
-    );
+    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Opening anime: $animeId')));
   }
 }

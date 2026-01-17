@@ -3,7 +3,7 @@ import 'package:cached_network_image/cached_network_image.dart';
 import 'package:flutter_animate/flutter_animate.dart';
 import '../core/theme/app_colors.dart';
 import '../core/theme/app_theme.dart';
-import '../data/database/database.dart';
+import '../data/models/anime.dart';
 
 /// Anime card widget for grid display
 class AnimeCard extends StatelessWidget {
@@ -32,7 +32,6 @@ class AnimeCard extends StatelessWidget {
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          // Cover Image
           Expanded(
             child: Container(
               decoration: BoxDecoration(
@@ -50,10 +49,7 @@ class AnimeCard extends StatelessWidget {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    // Image
                     _buildCoverImage(),
-                    
-                    // Gradient overlay at bottom
                     Positioned(
                       bottom: 0,
                       left: 0,
@@ -72,33 +68,22 @@ class AnimeCard extends StatelessWidget {
                         ),
                       ),
                     ),
-
-                    // Status badge
                     if (anime.status != null)
                       Positioned(
                         top: 8,
                         right: 8,
                         child: Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 8,
-                            vertical: 4,
-                          ),
+                          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 4),
                           decoration: BoxDecoration(
                             color: _getStatusColor(anime.status!),
                             borderRadius: BorderRadius.circular(8),
                           ),
                           child: Text(
                             anime.status!,
-                            style: const TextStyle(
-                              color: Colors.white,
-                              fontSize: 10,
-                              fontWeight: FontWeight.w600,
-                            ),
+                            style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.w600),
                           ),
                         ),
                       ),
-
-                    // Progress indicator
                     if (showProgress && progress != null && progress! > 0)
                       Positioned(
                         bottom: 0,
@@ -107,9 +92,7 @@ class AnimeCard extends StatelessWidget {
                         child: LinearProgressIndicator(
                           value: progress!,
                           backgroundColor: Colors.black26,
-                          valueColor: const AlwaysStoppedAnimation(
-                            AppColors.draculaPurple,
-                          ),
+                          valueColor: const AlwaysStoppedAnimation(AppColors.draculaPurple),
                           minHeight: 3,
                         ),
                       ),
@@ -118,27 +101,17 @@ class AnimeCard extends StatelessWidget {
               ),
             ),
           ),
-
           const SizedBox(height: 8),
-
-          // Title
           Text(
             anime.title,
             maxLines: 2,
             overflow: TextOverflow.ellipsis,
-            style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                  fontWeight: FontWeight.w500,
-                ),
+            style: Theme.of(context).textTheme.bodyMedium?.copyWith(fontWeight: FontWeight.w500),
           ),
-
-          // Episode info
           if (anime.totalEpisodes != null)
             Padding(
               padding: const EdgeInsets.only(top: 2),
-              child: Text(
-                '${anime.totalEpisodes} Episodes',
-                style: Theme.of(context).textTheme.bodySmall,
-              ),
+              child: Text('${anime.totalEpisodes} Episodes', style: Theme.of(context).textTheme.bodySmall),
             ),
         ],
       ),
@@ -154,53 +127,33 @@ class AnimeCard extends StatelessWidget {
     if (anime.coverUrl == null || anime.coverUrl!.isEmpty) {
       return Container(
         color: AppColors.draculaCurrentLine,
-        child: const Center(
-          child: Icon(
-            Icons.movie_outlined,
-            size: 48,
-            color: AppColors.draculaComment,
-          ),
-        ),
+        child: const Center(child: Icon(Icons.movie_outlined, size: 48, color: AppColors.draculaComment)),
       );
     }
-
     return CachedNetworkImage(
       imageUrl: anime.coverUrl!,
       fit: BoxFit.cover,
       placeholder: (context, url) => Container(
         color: AppColors.draculaCurrentLine,
-        child: const Center(
-          child: CircularProgressIndicator(strokeWidth: 2),
-        ),
+        child: const Center(child: CircularProgressIndicator(strokeWidth: 2)),
       ),
       errorWidget: (context, url, error) => Container(
         color: AppColors.draculaCurrentLine,
-        child: const Center(
-          child: Icon(
-            Icons.broken_image_outlined,
-            size: 48,
-            color: AppColors.draculaComment,
-          ),
-        ),
+        child: const Center(child: Icon(Icons.broken_image_outlined, size: 48, color: AppColors.draculaComment)),
       ),
     );
   }
 
   Color _getStatusColor(String status) {
     switch (status.toLowerCase()) {
-      case 'ongoing':
-        return AppColors.draculaGreen;
-      case 'completed':
-        return AppColors.draculaPurple;
-      case 'upcoming':
-        return AppColors.draculaOrange;
-      default:
-        return AppColors.draculaComment;
+      case 'ongoing': return AppColors.draculaGreen;
+      case 'completed': return AppColors.draculaPurple;
+      case 'upcoming': return AppColors.draculaOrange;
+      default: return AppColors.draculaComment;
     }
   }
 }
 
-/// Shimmer loading placeholder for anime card
 class AnimeCardShimmer extends StatelessWidget {
   const AnimeCardShimmer({super.key});
 
@@ -213,36 +166,12 @@ class AnimeCardShimmer extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Expanded(
-          child: Container(
-            decoration: BoxDecoration(
-              color: baseColor,
-              borderRadius: AppTheme.cardRadius,
-            ),
-          ),
-        ),
+        Expanded(child: Container(decoration: BoxDecoration(color: baseColor, borderRadius: AppTheme.cardRadius))),
         const SizedBox(height: 8),
-        Container(
-          height: 14,
-          width: double.infinity,
-          decoration: BoxDecoration(
-            color: baseColor,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
+        Container(height: 14, width: double.infinity, decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(4))),
         const SizedBox(height: 4),
-        Container(
-          height: 12,
-          width: 80,
-          decoration: BoxDecoration(
-            color: baseColor,
-            borderRadius: BorderRadius.circular(4),
-          ),
-        ),
+        Container(height: 12, width: 80, decoration: BoxDecoration(color: baseColor, borderRadius: BorderRadius.circular(4))),
       ],
-    ).animate(onPlay: (controller) => controller.repeat()).shimmer(
-          duration: 1500.ms,
-          color: highlightColor.withOpacity(0.3),
-        );
+    ).animate(onPlay: (controller) => controller.repeat()).shimmer(duration: 1500.ms, color: highlightColor.withOpacity(0.3));
   }
 }

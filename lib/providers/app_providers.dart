@@ -1,10 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import '../data/database/database.dart';
 import '../data/database/repositories/anime_repository.dart';
 import '../data/database/repositories/episode_repository.dart';
 import '../data/database/repositories/download_repository.dart';
 import '../data/database/repositories/settings_repository.dart';
+import '../data/models/anime.dart';
+import '../data/models/episode.dart';
+import '../data/models/download_task.dart';
+import '../data/models/app_settings.dart';
 import '../data/services/download_manager.dart';
 import '../data/services/scraper_service.dart';
 import '../data/services/storage_service.dart';
@@ -24,11 +27,11 @@ final storageServiceProvider = Provider((ref) => StorageService.instance);
 
 // ============ Settings Provider ============
 
-final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettingsTableData?>((ref) {
+final settingsProvider = StateNotifierProvider<SettingsNotifier, AppSettings?>((ref) {
   return SettingsNotifier(ref.read(settingsRepositoryProvider));
 });
 
-class SettingsNotifier extends StateNotifier<AppSettingsTableData?> {
+class SettingsNotifier extends StateNotifier<AppSettings?> {
   final SettingsRepository _repository;
 
   SettingsNotifier(this._repository) : super(null) {
@@ -39,7 +42,7 @@ class SettingsNotifier extends StateNotifier<AppSettingsTableData?> {
     state = await _repository.getSettings();
   }
 
-  Future<void> setThemeMode(String mode) async {
+  Future<void> setThemeMode(AppThemeMode mode) async {
     await _repository.setThemeMode(mode);
     state = await _repository.getSettings();
   }
@@ -86,11 +89,11 @@ final themeModeProvider = Provider<ThemeMode>((ref) {
   if (settings == null) return ThemeMode.system;
   
   switch (settings.themeMode) {
-    case 'light':
+    case AppThemeMode.light:
       return ThemeMode.light;
-    case 'dark':
+    case AppThemeMode.dark:
       return ThemeMode.dark;
-    default:
+    case AppThemeMode.system:
       return ThemeMode.system;
   }
 });

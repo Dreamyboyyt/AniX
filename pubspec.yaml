@@ -13,9 +13,9 @@ dependencies:
   # State Management
   flutter_riverpod: ^2.6.1
 
-  # Database (Drift - actively maintained SQLite wrapper)
-  drift: ^2.22.1
-  sqlite3_flutter_libs: ^0.5.28
+  # Database (Isar Community - maintained fork)
+  isar_community: ^3.3.0-dev.2
+  isar_community_flutter_libs: ^3.3.0-dev.2
   path_provider: ^2.1.5
   path: ^1.9.0
 
@@ -23,7 +23,7 @@ dependencies:
   dio: ^5.7.0
   connectivity_plus: ^6.1.1
 
-  # WebView for scraping (beta version for AGP 8.x compatibility)
+  # WebView for scraping
   flutter_inappwebview: ^6.1.5
 
   # Video Player (media_kit - Schnitzel5 fork for AGP 8.x compatibility)
@@ -85,24 +85,10 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^5.0.0
   build_runner: ^2.4.13
-  drift_dev: ^2.22.1
+  isar_community_generator: ^3.3.0-dev.2
 
 dependency_overrides:
   collection: ^1.19.1
 
 flutter:
   uses-material-design: true
-
-  # Uncomment and add fonts when available
-  # assets:
-  #   - assets/images/
-  # fonts:
-  #   - family: Poppins
-  #     fonts:
-  #       - asset: assets/fonts/Poppins-Regular.ttf
-  #       - asset: assets/fonts/Poppins-Medium.ttf
-  #         weight: 500
-  #       - asset: assets/fonts/Poppins-SemiBold.ttf
-  #         weight: 600
-  #       - asset: assets/fonts/Poppins-Bold.ttf
-  #         weight: 700

@@ -1,6 +1,6 @@
 import 'package:flutter/material.dart';
 import '../core/constants/app_constants.dart';
-import '../data/database/database.dart';
+import '../data/models/anime.dart';
 import 'anime_card.dart';
 
 /// Grid widget for displaying anime cards
@@ -28,13 +28,8 @@ class AnimeGrid extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (isLoading) {
-      return _buildLoadingGrid();
-    }
-
-    if (animeList.isEmpty) {
-      return const SizedBox.shrink();
-    }
+    if (isLoading) return _buildLoadingGrid();
+    if (animeList.isEmpty) return const SizedBox.shrink();
 
     return GridView.builder(
       padding: padding ?? const EdgeInsets.all(AppConstants.defaultPadding),
@@ -73,7 +68,6 @@ class AnimeGrid extends StatelessWidget {
   }
 }
 
-/// Sliver version of anime grid for use in CustomScrollView
 class SliverAnimeGrid extends StatelessWidget {
   final List<Anime> animeList;
   final void Function(Anime anime)? onAnimeTap;
@@ -109,10 +103,7 @@ class SliverAnimeGrid extends StatelessWidget {
         ),
         delegate: SliverChildBuilderDelegate(
           (context, index) {
-            if (isLoading) {
-              return const AnimeCardShimmer();
-            }
-
+            if (isLoading) return const AnimeCardShimmer();
             final anime = animeList[index];
             return AnimeCard(
               anime: anime,

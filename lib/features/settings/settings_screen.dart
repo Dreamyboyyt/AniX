@@ -2,7 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/extensions.dart';
-import '../../data/database/database.dart';
+import '../../data/models/app_settings.dart';
 import '../../data/services/storage_service.dart';
 import '../../providers/app_providers.dart';
 
@@ -30,13 +30,11 @@ class SettingsScreen extends ConsumerWidget {
       body: ListView(
         padding: const EdgeInsets.all(16),
         children: [
-          // Appearance Section
           _buildSectionHeader(context, 'Appearance'),
           _buildThemeTile(context, ref, settings),
 
           const SizedBox(height: 24),
 
-          // Playback Section
           _buildSectionHeader(context, 'Playback'),
           _buildQualityTile(context, ref, settings),
           _buildLanguageTile(context, ref, settings),
@@ -44,7 +42,6 @@ class SettingsScreen extends ConsumerWidget {
 
           const SizedBox(height: 24),
 
-          // Downloads Section
           _buildSectionHeader(context, 'Downloads'),
           _buildStorageTile(context, ref, settings),
           _buildParallelDownloadsTile(context, ref, settings),
@@ -52,14 +49,12 @@ class SettingsScreen extends ConsumerWidget {
 
           const SizedBox(height: 24),
 
-          // Storage Section
           _buildSectionHeader(context, 'Storage'),
           _buildStorageInfoTile(context, ref),
           _buildClearCacheTile(context, ref),
 
           const SizedBox(height: 24),
 
-          // About Section
           _buildSectionHeader(context, 'About'),
           _buildAboutTile(context),
         ],
@@ -80,7 +75,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildThemeTile(BuildContext context, WidgetRef ref, AppSettingsTableData settings) {
+  Widget _buildThemeTile(BuildContext context, WidgetRef ref, AppSettings settings) {
     return Card(
       child: ListTile(
         leading: const Icon(Icons.palette_outlined),
@@ -92,7 +87,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildQualityTile(BuildContext context, WidgetRef ref, AppSettingsTableData settings) {
+  Widget _buildQualityTile(BuildContext context, WidgetRef ref, AppSettings settings) {
     return Card(
       child: ListTile(
         leading: const Icon(Icons.high_quality_outlined),
@@ -104,7 +99,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildLanguageTile(BuildContext context, WidgetRef ref, AppSettingsTableData settings) {
+  Widget _buildLanguageTile(BuildContext context, WidgetRef ref, AppSettings settings) {
     return Card(
       child: ListTile(
         leading: const Icon(Icons.language_outlined),
@@ -116,7 +111,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildAutoPlayTile(BuildContext context, WidgetRef ref, AppSettingsTableData settings) {
+  Widget _buildAutoPlayTile(BuildContext context, WidgetRef ref, AppSettings settings) {
     return Card(
       child: SwitchListTile(
         secondary: const Icon(Icons.skip_next_outlined),
@@ -130,7 +125,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildStorageTile(BuildContext context, WidgetRef ref, AppSettingsTableData settings) {
+  Widget _buildStorageTile(BuildContext context, WidgetRef ref, AppSettings settings) {
     return Card(
       child: ListTile(
         leading: const Icon(Icons.folder_outlined),
@@ -142,7 +137,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildParallelDownloadsTile(BuildContext context, WidgetRef ref, AppSettingsTableData settings) {
+  Widget _buildParallelDownloadsTile(BuildContext context, WidgetRef ref, AppSettings settings) {
     return Card(
       child: ListTile(
         leading: const Icon(Icons.download_outlined),
@@ -154,7 +149,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  Widget _buildWifiOnlyTile(BuildContext context, WidgetRef ref, AppSettingsTableData settings) {
+  Widget _buildWifiOnlyTile(BuildContext context, WidgetRef ref, AppSettings settings) {
     return Card(
       child: SwitchListTile(
         secondary: const Icon(Icons.wifi_outlined),
@@ -207,27 +202,26 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  String _getThemeName(String mode) {
+  String _getThemeName(AppThemeMode mode) {
     switch (mode) {
-      case 'light':
+      case AppThemeMode.light:
         return 'Light';
-      case 'dark':
+      case AppThemeMode.dark:
         return 'Dark';
-      default:
+      case AppThemeMode.system:
         return 'System';
     }
   }
 
-  void _showThemeDialog(BuildContext context, WidgetRef ref, AppSettingsTableData settings) {
-    final themes = ['system', 'light', 'dark'];
+  void _showThemeDialog(BuildContext context, WidgetRef ref, AppSettings settings) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(
         title: const Text('Theme'),
         content: Column(
           mainAxisSize: MainAxisSize.min,
-          children: themes.map((mode) {
-            return RadioListTile<String>(
+          children: AppThemeMode.values.map((mode) {
+            return RadioListTile<AppThemeMode>(
               title: Text(_getThemeName(mode)),
               value: mode,
               groupValue: settings.themeMode,
@@ -244,7 +238,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showQualityDialog(BuildContext context, WidgetRef ref, AppSettingsTableData settings) {
+  void _showQualityDialog(BuildContext context, WidgetRef ref, AppSettings settings) {
     final qualities = ['1080p', '720p', '480p', '360p', null];
     showDialog(
       context: context,
@@ -268,7 +262,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showLanguageDialog(BuildContext context, WidgetRef ref, AppSettingsTableData settings) {
+  void _showLanguageDialog(BuildContext context, WidgetRef ref, AppSettings settings) {
     final languages = ['Hindi', 'Japanese', 'English', null];
     showDialog(
       context: context,
@@ -292,7 +286,7 @@ class SettingsScreen extends ConsumerWidget {
     );
   }
 
-  void _showParallelDownloadsDialog(BuildContext context, WidgetRef ref, AppSettingsTableData settings) {
+  void _showParallelDownloadsDialog(BuildContext context, WidgetRef ref, AppSettings settings) {
     showDialog(
       context: context,
       builder: (context) => AlertDialog(

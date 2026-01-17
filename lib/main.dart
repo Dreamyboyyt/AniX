@@ -52,9 +52,8 @@ class _AppInitializerState extends State<_AppInitializer> {
         statusBarColor: Colors.transparent,
       ));
 
-      // Initialize database (Drift handles lazy initialization)
-      // Just access the instance to trigger creation
-      AppDatabase.instance;
+      // Initialize Isar database
+      await AppDatabase.initialize();
 
       // Initialize storage service
       await StorageService.instance.initialize();
