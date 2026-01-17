@@ -30,7 +30,6 @@ class ScraperService {
     AppLogger.i('Starting to sniff M3U8 from: $episodeUrl');
     
     _m3u8Completer = Completer<String?>();
-    _capturedM3u8Url = null;
     _capturedReferer = null;
     _capturedCookies = null;
 
