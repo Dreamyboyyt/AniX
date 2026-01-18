@@ -14,6 +14,7 @@ class Anime {
   String? coverUrl;
   String? bannerUrl;
   String? description;
+  String? sourceUrl;
   String? releaseYear;
   String? status;
   String? type;

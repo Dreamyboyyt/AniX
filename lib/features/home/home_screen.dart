@@ -5,6 +5,7 @@ import '../../providers/app_providers.dart';
 import '../../widgets/anime_grid.dart';
 import '../../widgets/empty_state.dart';
 import '../search/search_screen.dart';
+import '../anime_details/anime_details_screen.dart';
 
 class HomeScreen extends ConsumerWidget {
   const HomeScreen({super.key});
@@ -28,7 +29,7 @@ class HomeScreen extends ConsumerWidget {
               }
               return SliverAnimeGrid(
                 animeList: animeList,
-                onAnimeTap: (anime) => _openAnimeDetails(context, anime.animeId),
+                onAnimeTap: (anime) => _openAnimeDetails(context, anime),
                 showProgress: true,
                 progressMap: _buildProgressMap(animeList),
               );
@@ -53,7 +54,10 @@ class HomeScreen extends ConsumerWidget {
 
   void _openSearch(BuildContext context) => Navigator.push(context, MaterialPageRoute(builder: (_) => const SearchScreen()));
 
-  void _openAnimeDetails(BuildContext context, String animeId) {
-    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Opening anime: $animeId')));
+  void _openAnimeDetails(BuildContext context, Anime anime) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AnimeDetailsScreen(anime: anime)),
+    );
   }
 }

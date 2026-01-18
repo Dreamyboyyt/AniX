@@ -4,6 +4,7 @@ import '../../core/theme/app_colors.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/anime_grid.dart';
 import '../../widgets/empty_state.dart';
+import '../anime_details/anime_details_screen.dart';
 
 /// Search screen for finding anime
 class SearchScreen extends ConsumerStatefulWidget {
@@ -82,7 +83,7 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
 
         return AnimeGrid(
           animeList: results,
-          onAnimeTap: (anime) => _openAnimeDetails(anime.animeId),
+          onAnimeTap: (anime) => _openAnimeDetails(context, anime),
         );
       },
       loading: () => const AnimeGrid(
@@ -124,10 +125,10 @@ class _SearchScreenState extends ConsumerState<SearchScreen> {
     );
   }
 
-  void _openAnimeDetails(String animeId) {
-    // TODO: Navigate to anime details screen
-    ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Opening anime: $animeId')),
+  void _openAnimeDetails(BuildContext context, dynamic anime) {
+    Navigator.push(
+      context,
+      MaterialPageRoute(builder: (_) => AnimeDetailsScreen(anime: anime)),
     );
   }
 }

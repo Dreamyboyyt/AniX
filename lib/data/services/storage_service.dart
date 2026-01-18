@@ -35,25 +35,23 @@ class StorageService {
   Future<bool> requestSafPermission() async {
     try {
       final granted = await _saf.getDirectoryPermission(isDynamic: true);
-      
+
       if (granted == true) {
-        // Get the paths
         final paths = await Saf.getPersistedPermissionDirectories();
         if (paths != null && paths.isNotEmpty) {
           _downloadBasePath = paths.first;
-          
-          // Save to settings
+
           await SettingsRepository.instance.setSafFolder(
             _downloadBasePath,
             _downloadBasePath,
           );
-          
+
           AppLogger.i('SAF permission granted: $_downloadBasePath');
           return true;
         }
       }
-      
-      AppLogger.w('SAF permission denied');
+
+      AppLogger.w('SAF permission denied or not persisted');
       return false;
     } catch (e, stack) {
       AppLogger.e('Failed to request SAF permission', e, stack);
