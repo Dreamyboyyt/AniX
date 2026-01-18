@@ -59,6 +59,7 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
 
   Future<void> _initPlayer() async {
     // Create player with better buffering configuration
+    // Note: media_kit uses libmpv under the hood, configure via PlayerConfiguration
     _player = Player(
       configuration: const PlayerConfiguration(
         // Buffer more data for smoother playback
@@ -69,16 +70,6 @@ class _VideoPlayerScreenState extends ConsumerState<VideoPlayerScreen> {
     );
     
     _controller = VideoController(_player);
-
-    // Configure mpv for better HLS streaming and seeking
-    await _player.setProperty('cache', 'yes');
-    await _player.setProperty('cache-secs', '120'); // 2 minutes cache
-    await _player.setProperty('demuxer-max-bytes', '100MiB');
-    await _player.setProperty('demuxer-max-back-bytes', '50MiB');
-    await _player.setProperty('demuxer-readahead-secs', '60'); // Read ahead 60 seconds
-    await _player.setProperty('force-seekable', 'yes'); // Force seekable for HLS
-    await _player.setProperty('hr-seek', 'yes'); // Precise seeking
-    await _player.setProperty('hr-seek-framedrop', 'yes'); // Drop frames for faster seeking
 
     // Listen to player state
     _player.stream.playing.listen((playing) {
