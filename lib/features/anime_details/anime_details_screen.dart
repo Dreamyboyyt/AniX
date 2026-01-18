@@ -133,8 +133,8 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
         final selection = await QualitySelectorDialog.show(
           context,
           playlist: masterPlaylist,
-          defaultQuality: settings.defaultQuality,
-          defaultLanguage: settings.defaultLanguage,
+          defaultQuality: settings?.defaultQuality,
+          defaultLanguage: settings?.defaultLanguage,
         );
         
         if (selection == null) {
