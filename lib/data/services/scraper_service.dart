@@ -1,6 +1,6 @@
 import 'dart:async';
+import 'dart:convert';
 import 'package:dio/dio.dart';
-import 'package:flutter_inappwebview/flutter_inappwebview.dart';
 import 'package:html/parser.dart' as html_parser;
 import '../../core/constants/app_constants.dart';
 import '../../core/errors/app_exception.dart';
@@ -11,7 +11,7 @@ import '../models/episode.dart';
 import '../models/m3u8_models.dart';
 import 'm3u8_parser.dart';
 
-/// Service for scraping anime episode URLs using WebView
+/// Service for scraping anime episode URLs using Dio HTTP requests
 class ScraperService {
   ScraperService._();
   static final ScraperService instance = ScraperService._();
@@ -22,103 +22,88 @@ class ScraperService {
     headers: {
       'User-Agent': AppConstants.userAgent,
     },
+    followRedirects: true,
+    maxRedirects: 5,
   ));
 
-  HeadlessInAppWebView? _webView;
-  Completer<String?>? _m3u8Completer;
-  String? _capturedReferer;
-  String? _capturedCookies;
-
-  /// Sniff M3U8 URL from episode page
+  /// Sniff M3U8 URL from episode page using HTTP requests (no WebView)
   Future<ScraperResult> sniffM3u8Url(String episodeUrl) async {
-    AppLogger.i('Starting to sniff M3U8 from: $episodeUrl');
-    
-    _m3u8Completer = Completer<String?>();
-    _capturedReferer = null;
-    _capturedCookies = null;
+    AppLogger.i('Starting to extract M3U8 from: $episodeUrl');
 
     try {
-      // Create headless WebView
-      _webView = HeadlessInAppWebView(
-        initialUrlRequest: URLRequest(
-          url: WebUri(episodeUrl),
-          headers: {'User-Agent': AppConstants.userAgent},
-        ),
-        initialSettings: InAppWebViewSettings(
-          userAgent: AppConstants.userAgent,
-          javaScriptEnabled: true,
-          mediaPlaybackRequiresUserGesture: false,
-          allowsInlineMediaPlayback: true,
-          useShouldInterceptRequest: true,
-          domStorageEnabled: true,
-          databaseEnabled: true,
-          cacheEnabled: true,
-          allowFileAccess: true,
-          allowContentAccess: true,
-        ),
-        onLoadStop: (controller, url) async {
-          AppLogger.d('Page loaded: $url');
-          _capturedReferer = url?.toString();
-
-          // Get cookies
-          try {
-            final cookies = await CookieManager.instance().getCookies(url: url!);
-            _capturedCookies = _cookiesToNetscapeString(cookies);
-          } catch (e) {
-            AppLogger.w('Failed to get cookies: $e');
-          }
-
-          // Try to find video player iframe and navigate into it
-          _tryNavigateToVideoPlayer(controller);
-        },
-        onLoadStart: (controller, url) {
-          AppLogger.d('Loading: $url');
-        },
-        shouldInterceptRequest: (controller, request) async {
-          final url = request.url.toString().toLowerCase();
-          
-          // Check for M3U8, master.txt, or HLS patterns
-          if (_isM3u8Url(url)) {
-            AppLogger.i('Captured M3U8 URL: ${request.url}');
-            
-            if (!_m3u8Completer!.isCompleted) {
-              _m3u8Completer!.complete(request.url.toString());
-            }
-          }
-          
-          return null; // Continue with request
-        },
-        onReceivedError: (controller, request, error) {
-          AppLogger.w('WebView error for ${request.url}: ${error.description}');
-        },
-        onConsoleMessage: (controller, consoleMessage) {
-          AppLogger.d('Console: ${consoleMessage.message}');
-        },
+      // Step 1: Get episode page and extract iframe URL
+      AppLogger.d('Step 1: Fetching episode page...');
+      final epResponse = await _dio.get(
+        episodeUrl,
+        options: Options(headers: {'User-Agent': AppConstants.userAgent}),
       );
+      final epHtml = epResponse.data.toString();
 
-      // Start WebView
-      await _webView!.run();
-
-      // Wait for M3U8 with timeout
-      final result = await _m3u8Completer!.future.timeout(
-        AppConstants.sniffTimeout,
-        onTimeout: () => null,
-      );
-
-      // Dispose WebView
-      await _disposeWebView();
-
-      if (result == null) {
-        throw ScraperException(message: 'Timeout: Could not find M3U8 URL');
+      // Extract iframe URL (zephyr or watchanimeworld)
+      final iframeUrl = _extractIframeUrl(epHtml);
+      if (iframeUrl == null) {
+        throw ScraperException(message: 'No video iframe found on episode page');
       }
+      AppLogger.i('Found iframe URL: $iframeUrl');
+
+      // Step 2: Get iframe page content
+      AppLogger.d('Step 2: Fetching iframe page...');
+      final iframeResponse = await _dio.get(
+        iframeUrl,
+        options: Options(headers: {
+          'User-Agent': AppConstants.userAgent,
+          'Referer': episodeUrl,
+        }),
+      );
+      final iframeHtml = iframeResponse.data.toString();
+
+      // Step 3: Unpack JavaScript if packed and extract Video ID
+      AppLogger.d('Step 3: Extracting video ID...');
+      final unpackedHtml = _unpackJavaScript(iframeHtml);
+      final videoId = _extractVideoId(unpackedHtml.isNotEmpty ? unpackedHtml : iframeHtml);
+      
+      if (videoId == null) {
+        throw ScraperException(message: 'Failed to extract video ID from iframe');
+      }
+      AppLogger.i('Found video ID: $videoId');
+
+      // Step 4: Call API to get M3U8 URL
+      AppLogger.d('Step 4: Calling video API...');
+      final iframeRoot = _getUrlRoot(iframeUrl);
+      final apiUrl = '$iframeRoot/player/index.php?data=$videoId&do=getVideo';
+      
+      final apiResponse = await _dio.post(
+        apiUrl,
+        data: 'hash=$videoId&r=$iframeUrl',
+        options: Options(
+          headers: {
+            'User-Agent': AppConstants.userAgent,
+            'Referer': iframeUrl,
+            'X-Requested-With': 'XMLHttpRequest',
+            'Content-Type': 'application/x-www-form-urlencoded',
+          },
+        ),
+      );
+
+      // Parse JSON response
+      final jsonData = apiResponse.data is String 
+          ? json.decode(apiResponse.data) 
+          : apiResponse.data;
+      
+      final m3u8Url = jsonData['videoSource'] ?? jsonData['file'];
+      if (m3u8Url == null || m3u8Url.toString().isEmpty) {
+        AppLogger.e('API response: $jsonData');
+        throw ScraperException(message: 'API returned no video URL');
+      }
+      
+      AppLogger.i('Got M3U8 URL: $m3u8Url');
 
       return ScraperResult(
-        m3u8Url: result,
-        referer: _capturedReferer,
-        cookies: _capturedCookies,
+        m3u8Url: m3u8Url.toString(),
+        referer: iframeUrl,
+        cookies: null,
       );
     } catch (e, stack) {
-      await _disposeWebView();
       AppLogger.e('Scraper error', e, stack);
       
       if (e is ScraperException) rethrow;
@@ -130,128 +115,102 @@ class ScraperService {
     }
   }
 
-  /// Check if URL is an M3U8/HLS URL
-  bool _isM3u8Url(String url) {
-    // Skip CDN protection and tracking URLs
-    if (url.contains('cdn-cgi') || url.contains('analytics') || url.contains('beacon')) {
-      return false;
-    }
+  /// Extract iframe URL from episode page HTML
+  String? _extractIframeUrl(String html) {
+    // Pattern: <iframe src="..." or <iframe src='...'
+    final pattern = RegExp(r'<iframe[^>]+src=["\x27]([^"\x27]+)["\x27]', caseSensitive: false);
+    final matches = pattern.allMatches(html);
     
-    // Check for common M3U8/HLS patterns
-    return url.contains('.m3u8') ||
-           url.contains('master.txt') ||
-           url.contains('/hls/') ||
-           url.contains('playlist.m3u') ||
-           url.contains('/playlist/') && url.contains('.m3u') ||
-           url.contains('index.m3u8') ||
-           url.contains('master.m3u8') ||
-           (url.contains('.m3u') && !url.contains('.m3u8'));
+    for (final match in matches) {
+      final url = match.group(1);
+      if (url != null && (url.contains('zephyr') || url.contains('watchanimeworld') || url.contains('player') || url.contains('embed'))) {
+        return url;
+      }
+    }
+
+    // Fallback: get first iframe
+    final fallbackMatch = pattern.firstMatch(html);
+    return fallbackMatch?.group(1);
   }
 
-  /// Try to navigate into video player iframe and trigger playback
-  Future<void> _tryNavigateToVideoPlayer(InAppWebViewController controller) async {
-    // Wait a bit for page to fully render
-    await Future.delayed(const Duration(milliseconds: 500));
-    
-    try {
-      // Find all iframes and look for video player
-      final result = await controller.evaluateJavascript(source: '''
-        (function() {
-          var iframes = document.querySelectorAll('iframe');
-          var videoIframe = null;
-          
-          for (var i = 0; i < iframes.length; i++) {
-            var src = iframes[i].src || '';
-            if (src.includes('zephyrflick') || 
-                src.includes('player') || 
-                src.includes('embed') ||
-                src.includes('stream') ||
-                src.includes('video')) {
-              videoIframe = src;
-              break;
-            }
-          }
-          
-          return videoIframe;
-        })();
-      ''');
+  /// Unpack JavaScript (p,a,c,k,e,d) obfuscation
+  String _unpackJavaScript(String html) {
+    // Match the packed JavaScript pattern
+    final packedRegex = RegExp(
+      r"return p\}\s*\(\s*'(.*?)'\s*,\s*(\d+)\s*,\s*(\d+)\s*,\s*'([^']+)'\.split\('\|'\)",
+      dotAll: true,
+    );
 
-      if (result != null && result.toString().isNotEmpty && result != 'null') {
-        AppLogger.i('Found video iframe: $result');
-        await controller.loadUrl(urlRequest: URLRequest(url: WebUri(result.toString())));
-        return;
+    final match = packedRegex.firstMatch(html);
+    if (match == null) {
+      AppLogger.d('No packed JavaScript found');
+      return '';
+    }
+
+    try {
+      final p = match.group(1)!;
+      final a = int.parse(match.group(2)!);
+      final c = int.parse(match.group(3)!);
+      final k = match.group(4)!.split('|');
+
+      // Base conversion function
+      String baseN(int value, int radix) {
+        if (value < radix) {
+          return value < 36 
+              ? value.toRadixString(36) 
+              : String.fromCharCode(value + 29);
+        }
+        return baseN(value ~/ radix, radix) + baseN(value % radix, radix);
       }
-    } catch (e) {
-      AppLogger.w('Failed to find iframe: $e');
-    }
 
-    // Try to click play button or trigger video playback
-    await Future.delayed(const Duration(seconds: 1));
-    
-    try {
-      await controller.evaluateJavascript(source: '''
-        (function() {
-          // Try various play button selectors
-          var selectors = [
-            '.jw-display-icon-container',
-            '.plyr__control--overlaid',
-            '.vjs-big-play-button',
-            '.play-button',
-            '.btn-play',
-            '[class*="play"]',
-            'video'
-          ];
-          
-          for (var i = 0; i < selectors.length; i++) {
-            var el = document.querySelector(selectors[i]);
-            if (el) {
-              if (el.tagName === 'VIDEO') {
-                el.play();
-              } else {
-                el.click();
-              }
-              break;
-            }
-          }
-          
-          // Also try to find and play any video element
-          var videos = document.querySelectorAll('video');
-          for (var j = 0; j < videos.length; j++) {
-            try { videos[j].play(); } catch(e) {}
-          }
-        })();
-      ''');
-    } catch (e) {
-      AppLogger.w('Failed to click play: $e');
-    }
-
-    // Check for iframe again after some interaction
-    await Future.delayed(const Duration(seconds: 2));
-    
-    try {
-      final result = await controller.evaluateJavascript(source: '''
-        (function() {
-          var iframes = document.querySelectorAll('iframe');
-          for (var i = 0; i < iframes.length; i++) {
-            var src = iframes[i].src || '';
-            if (src && src.length > 10 && !src.includes('about:blank')) {
-              return src;
-            }
-          }
-          return null;
-        })();
-      ''');
-
-      if (result != null && result.toString().isNotEmpty && result != 'null') {
-        final iframeSrc = result.toString();
-        if (!iframeSrc.contains('about:blank')) {
-          AppLogger.i('Found iframe after delay: $iframeSrc');
-          await controller.loadUrl(urlRequest: URLRequest(url: WebUri(iframeSrc)));
+      // Build replacement dictionary
+      final dict = <String, String>{};
+      for (var i = 0; i < c; i++) {
+        final key = baseN(i, a);
+        if (i < k.length && k[i].isNotEmpty) {
+          dict[key] = k[i];
+        } else {
+          dict[key] = key;
         }
       }
+
+      // Replace all words
+      var result = p;
+      for (final entry in dict.entries) {
+        result = result.replaceAll(RegExp('\\b${entry.key}\\b'), entry.value);
+      }
+
+      AppLogger.d('Successfully unpacked JavaScript');
+      return result;
     } catch (e) {
-      AppLogger.w('Failed to check for iframe after delay: $e');
+      AppLogger.w('Failed to unpack JavaScript: $e');
+      return '';
     }
+  }
+
+  /// Extract video ID from FirePlayer call
+  String? _extractVideoId(String html) {
+    // Pattern: FirePlayer("VIDEO_ID") or FirePlayer('VIDEO_ID')
+    final patterns = [
+      RegExp(r'FirePlayer\s*\(\s*["\x27]([^"\x27]+)["\x27]'),
+      RegExp(r'data-id\s*=\s*["\x27]([^"\x27]+)["\x27]'),
+      RegExp(r'video_id\s*[=:]\s*["\x27]([^"\x27]+)["\x27]'),
+    ];
+
+    for (final pattern in patterns) {
+      final match = pattern.firstMatch(html);
+      if (match != null) {
+        return match.group(1);
+      }
+    }
+
+    return null;
+  }
+
+  /// Get root URL (protocol + domain)
+  String _getUrlRoot(String url) {
+    final uri = Uri.parse(url);
+    return '${uri.scheme}://${uri.host}';
   }
 
   /// Fetch anime details + episode list from series page

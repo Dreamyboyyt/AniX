@@ -23,9 +23,6 @@ dependencies:
   dio: ^5.7.0
   connectivity_plus: ^6.1.1
 
-  # WebView for scraping
-  flutter_inappwebview: ^6.1.5
-
   # Video Player (media_kit - Schnitzel5 fork for AGP 8.x compatibility)
   media_kit:
     git:
