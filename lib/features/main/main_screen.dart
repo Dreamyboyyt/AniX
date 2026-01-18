@@ -1,10 +1,12 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/errors/crash_handler.dart';
+import '../../core/theme/app_colors.dart';
 import '../../providers/app_providers.dart';
 import '../home/home_screen.dart';
 import '../downloads/downloads_screen.dart';
 import '../download_manager/download_manager_screen.dart';
+import '../search/search_screen.dart';
 import '../settings/settings_screen.dart';
 
 /// Main screen with bottom navigation
@@ -25,6 +27,30 @@ class _MainScreenState extends ConsumerState<MainScreen> {
     });
   }
 
+  void _openSearch() {
+    Navigator.of(context).push(
+      PageRouteBuilder(
+        pageBuilder: (context, animation, secondaryAnimation) => const SearchScreen(),
+        transitionsBuilder: (context, animation, secondaryAnimation, child) {
+          return FadeTransition(
+            opacity: animation,
+            child: SlideTransition(
+              position: Tween<Offset>(
+                begin: const Offset(0, 0.05),
+                end: Offset.zero,
+              ).animate(CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+              )),
+              child: child,
+            ),
+          );
+        },
+        transitionDuration: const Duration(milliseconds: 300),
+      ),
+    );
+  }
+
   @override
   Widget build(BuildContext context) {
     final currentIndex = ref.watch(currentNavIndexProvider);
@@ -38,6 +64,13 @@ class _MainScreenState extends ConsumerState<MainScreen> {
           DownloadManagerScreen(),
           SettingsScreen(),
         ],
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: _openSearch,
+        icon: const Icon(Icons.search_rounded),
+        label: const Text('Search'),
+        backgroundColor: AppColors.draculaPink,
+        foregroundColor: Colors.white,
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: currentIndex,

@@ -6,9 +6,12 @@ import 'app_colors.dart';
 class AppTheme {
   AppTheme._();
 
-  // Border radius used throughout the app
-  static const double borderRadius = 16.0;
+  // Border radius used throughout the app (increased for more rounded look)
+  static const double borderRadiusSmall = 12.0;
+  static const double borderRadius = 20.0;
+  static const double borderRadiusLarge = 28.0;
   static const BorderRadius cardRadius = BorderRadius.all(Radius.circular(borderRadius));
+  static const BorderRadius buttonRadius = BorderRadius.all(Radius.circular(borderRadiusLarge));
 
   /// Dark theme (Dracula)
   static ThemeData get darkTheme {
@@ -53,15 +56,26 @@ class AppTheme {
         clipBehavior: Clip.antiAlias,
       ),
 
-      // Buttons
+      // Buttons (more rounded)
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.draculaPurple,
           foregroundColor: AppColors.draculaBackground,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(borderRadius),
+            borderRadius: BorderRadius.circular(borderRadiusLarge),
+          ),
+        ),
+      ),
+
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.draculaPurple,
+          foregroundColor: AppColors.draculaBackground,
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(borderRadiusLarge),
           ),
         ),
       ),
@@ -69,10 +83,10 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.draculaPurple,
-          side: const BorderSide(color: AppColors.draculaPurple),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          side: const BorderSide(color: AppColors.draculaPurple, width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(borderRadius),
+            borderRadius: BorderRadius.circular(borderRadiusLarge),
           ),
         ),
       ),
@@ -84,11 +98,14 @@ class AppTheme {
         ),
       ),
 
-      // Floating Action Button
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      // Floating Action Button (more rounded)
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColors.draculaPurple,
         foregroundColor: AppColors.draculaBackground,
         elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(borderRadiusLarge),
+        ),
       ),
 
       // Input
@@ -172,12 +189,13 @@ class AppTheme {
         ),
       ),
 
-      // Chip
+      // Chip (more rounded)
       chipTheme: ChipThemeData(
         backgroundColor: AppColors.draculaCurrentLine,
         selectedColor: AppColors.draculaPurple,
         labelStyle: const TextStyle(color: AppColors.draculaForeground),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(borderRadiusLarge)),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
 
       // Text Theme
@@ -245,15 +263,26 @@ class AppTheme {
         clipBehavior: Clip.antiAlias,
       ),
 
-      // Buttons
+      // Buttons (more rounded)
       elevatedButtonTheme: ElevatedButtonThemeData(
         style: ElevatedButton.styleFrom(
           backgroundColor: AppColors.draculaPurple,
           foregroundColor: Colors.white,
           elevation: 0,
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(borderRadius),
+            borderRadius: BorderRadius.circular(borderRadiusLarge),
+          ),
+        ),
+      ),
+
+      filledButtonTheme: FilledButtonThemeData(
+        style: FilledButton.styleFrom(
+          backgroundColor: AppColors.draculaPurple,
+          foregroundColor: Colors.white,
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(borderRadiusLarge),
           ),
         ),
       ),
@@ -261,10 +290,10 @@ class AppTheme {
       outlinedButtonTheme: OutlinedButtonThemeData(
         style: OutlinedButton.styleFrom(
           foregroundColor: AppColors.draculaPurple,
-          side: const BorderSide(color: AppColors.draculaPurple),
-          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+          side: const BorderSide(color: AppColors.draculaPurple, width: 1.5),
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
           shape: RoundedRectangleBorder(
-            borderRadius: BorderRadius.circular(borderRadius),
+            borderRadius: BorderRadius.circular(borderRadiusLarge),
           ),
         ),
       ),
@@ -276,11 +305,14 @@ class AppTheme {
         ),
       ),
 
-      // Floating Action Button
-      floatingActionButtonTheme: const FloatingActionButtonThemeData(
+      // Floating Action Button (more rounded)
+      floatingActionButtonTheme: FloatingActionButtonThemeData(
         backgroundColor: AppColors.draculaPurple,
         foregroundColor: Colors.white,
         elevation: 4,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(borderRadiusLarge),
+        ),
       ),
 
       // Input
@@ -364,12 +396,13 @@ class AppTheme {
         ),
       ),
 
-      // Chip
+      // Chip (more rounded)
       chipTheme: ChipThemeData(
         backgroundColor: Colors.grey.shade100,
         selectedColor: AppColors.draculaPurple,
         labelStyle: TextStyle(color: AppColors.lightForeground),
-        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(borderRadiusLarge)),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
       ),
 
       // Text Theme

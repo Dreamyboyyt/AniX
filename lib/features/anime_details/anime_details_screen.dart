@@ -306,10 +306,10 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
         const SizedBox(width: 12),
         Expanded(
           child: Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 4),
             decoration: BoxDecoration(
-              border: Border.all(color: AppColors.draculaComment),
-              borderRadius: BorderRadius.circular(8),
+              color: AppColors.draculaCurrentLine.withValues(alpha: 0.5),
+              borderRadius: BorderRadius.circular(20),
             ),
             child: DropdownButtonHideUnderline(
               child: DropdownButton<String>(
@@ -358,10 +358,10 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
           controller: _searchController,
           decoration: InputDecoration(
             hintText: 'Search episodes (e.g., "25" or "title")',
-            prefixIcon: const Icon(Icons.search),
+            prefixIcon: const Icon(Icons.search_rounded),
             suffixIcon: _episodeSearchQuery.isNotEmpty
                 ? IconButton(
-                    icon: const Icon(Icons.clear),
+                    icon: const Icon(Icons.clear_rounded),
                     onPressed: () {
                       setState(() {
                         _episodeSearchQuery = '';
@@ -371,9 +371,11 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
                   )
                 : null,
             border: OutlineInputBorder(
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(24),
+              borderSide: BorderSide.none,
             ),
-            contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+            filled: true,
+            contentPadding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
           ),
           onChanged: (value) {
             setState(() {
@@ -407,7 +409,7 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         ClipRRect(
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(20),
           child: Container(
             width: 120,
             height: 170,
@@ -541,13 +543,13 @@ class _EpisodeTile extends StatelessWidget {
         alignment: Alignment.center,
         children: [
           Container(
-            width: 40,
-            height: 40,
+            width: 44,
+            height: 44,
             decoration: BoxDecoration(
               color: episode.isWatched 
                   ? AppColors.draculaGreen.withValues(alpha: 0.2)
                   : AppColors.draculaPurple.withValues(alpha: 0.2),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(14),
             ),
             child: Center(
               child: Text(
