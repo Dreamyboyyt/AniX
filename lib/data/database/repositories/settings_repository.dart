@@ -47,12 +47,11 @@ class SettingsRepository {
     await saveSettings(settings);
   }
 
-  /// Update SAF folder
-  Future<void> setSafFolder(String? uri, String? path) async {
+  /// Update download path
+  Future<void> setDownloadPath(String path) async {
     final settings = await getSettings();
-    settings.safFolderUri = uri;
     settings.downloadPath = path;
-    settings.storagePermissionGranted = uri != null;
+    settings.storagePermissionGranted = true;
     await saveSettings(settings);
   }
 

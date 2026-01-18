@@ -1,7 +1,7 @@
 import 'dart:io';
 import 'package:path_provider/path_provider.dart';
 import 'package:path/path.dart' as p;
-import 'package:saf/saf.dart';
+import 'package:permission_handler/permission_handler.dart';
 import '../../core/constants/app_constants.dart';
 import '../../core/utils/logger.dart';
 import '../../core/utils/extensions.dart';
@@ -12,65 +12,130 @@ class StorageService {
   StorageService._();
   static final StorageService instance = StorageService._();
 
-  final Saf _saf = Saf(AppConstants.downloadFolderName);
+  /// Default download path in external storage
+  static const String defaultExternalPath = '/storage/emulated/0/AniX';
+
   String? _downloadBasePath;
 
   /// Initialize storage service
   Future<void> initialize() async {
     final settings = await SettingsRepository.instance.getSettings();
-    final paths = await Saf.getPersistedPermissionDirectories();
 
-    if (paths != null && paths.isNotEmpty) {
-      _downloadBasePath = paths.first;
-      settings.safFolderUri = paths.first;
-      settings.downloadPath = paths.first;
+    // Check if we have storage permission
+    final hasPermission = await hasStoragePermission();
+
+    if (hasPermission) {
+      // Use custom path if set, otherwise use default
+      _downloadBasePath = settings.downloadPath ?? defaultExternalPath;
+      
+      // Ensure the directory exists
+      await _ensureDirectoryExists(_downloadBasePath!);
+      
+      // Update settings
+      settings.downloadPath = _downloadBasePath;
       settings.storagePermissionGranted = true;
       await SettingsRepository.instance.saveSettings(settings);
-    } else if (settings.safFolderUri != null) {
+      
+      AppLogger.i('Storage initialized at: $_downloadBasePath');
+    } else if (settings.downloadPath != null) {
       _downloadBasePath = settings.downloadPath;
     }
   }
 
-  /// Request SAF folder permission
-  Future<bool> requestSafPermission() async {
+  /// Request storage permission
+  Future<bool> requestStoragePermission() async {
     try {
-      final granted = await _saf.getDirectoryPermission(isDynamic: true);
+      PermissionStatus status;
 
-      if (granted == true) {
-        final paths = await Saf.getPersistedPermissionDirectories();
-        if (paths != null && paths.isNotEmpty) {
-          _downloadBasePath = paths.first;
-
-          await SettingsRepository.instance.setSafFolder(
-            _downloadBasePath,
-            _downloadBasePath,
-          );
-
-          AppLogger.i('SAF permission granted: $_downloadBasePath');
-          return true;
-        }
+      // For Android 11+ (API 30+), we need MANAGE_EXTERNAL_STORAGE
+      // For Android 10 and below, we use READ/WRITE_EXTERNAL_STORAGE
+      if (await _isAndroid11OrHigher()) {
+        status = await Permission.manageExternalStorage.request();
+      } else {
+        // Request both read and write for older Android versions
+        final writeStatus = await Permission.storage.request();
+        status = writeStatus;
       }
 
-      AppLogger.w('SAF permission denied or not persisted');
+      if (status.isGranted) {
+        _downloadBasePath = defaultExternalPath;
+        await _ensureDirectoryExists(_downloadBasePath!);
+
+        await SettingsRepository.instance.setDownloadPath(_downloadBasePath!);
+
+        AppLogger.i('Storage permission granted: $_downloadBasePath');
+        return true;
+      }
+
+      if (status.isPermanentlyDenied) {
+        AppLogger.w('Storage permission permanently denied - opening settings');
+        await openAppSettings();
+        return false;
+      }
+
+      AppLogger.w('Storage permission denied');
       return false;
     } catch (e, stack) {
-      AppLogger.e('Failed to request SAF permission', e, stack);
+      AppLogger.e('Failed to request storage permission', e, stack);
       return false;
     }
   }
 
-  /// Check if SAF permission is granted
-  Future<bool> hasSafPermission() async {
+  /// Check if storage permission is granted
+  Future<bool> hasStoragePermission() async {
     try {
-      final paths = await Saf.getPersistedPermissionDirectories();
-      final hasPermission = paths != null && paths.isNotEmpty;
-      if (hasPermission) {
-        _downloadBasePath = paths!.first;
+      if (await _isAndroid11OrHigher()) {
+        return await Permission.manageExternalStorage.isGranted;
+      } else {
+        return await Permission.storage.isGranted;
       }
-      return hasPermission;
+    } catch (e) {
+      AppLogger.e('Failed to check storage permission', e);
+      return false;
+    }
+  }
+
+  /// Check if running on Android 11 or higher
+  Future<bool> _isAndroid11OrHigher() async {
+    if (!Platform.isAndroid) return false;
+    // Android 11 is API level 30
+    // We can check this by attempting to use manageExternalStorage
+    // which is only available on Android 11+
+    try {
+      final status = await Permission.manageExternalStorage.status;
+      return status != PermissionStatus.restricted;
     } catch (e) {
       return false;
     }
+  }
+
+  /// Set custom download path
+  Future<bool> setCustomDownloadPath(String path) async {
+    try {
+      final hasPermission = await hasStoragePermission();
+      if (!hasPermission) {
+        AppLogger.w('Cannot set custom path - no storage permission');
+        return false;
+      }
+
+      await _ensureDirectoryExists(path);
+      _downloadBasePath = path;
+      await SettingsRepository.instance.setDownloadPath(path);
+      
+      AppLogger.i('Custom download path set: $path');
+      return true;
+    } catch (e, stack) {
+      AppLogger.e('Failed to set custom download path', e, stack);
+      return false;
+    }
+  }
+
+  /// Reset to default download path
+  Future<void> resetToDefaultPath() async {
+    _downloadBasePath = defaultExternalPath;
+    await _ensureDirectoryExists(_downloadBasePath!);
+    await SettingsRepository.instance.setDownloadPath(_downloadBasePath!);
+    AppLogger.i('Reset to default download path: $_downloadBasePath');
   }
 
   /// Get download base path

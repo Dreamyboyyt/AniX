@@ -1,9 +1,13 @@
 import 'dart:async';
 import 'package:dio/dio.dart';
 import 'package:flutter_inappwebview/flutter_inappwebview.dart';
+import 'package:html/parser.dart' as html_parser;
 import '../../core/constants/app_constants.dart';
 import '../../core/errors/app_exception.dart';
 import '../../core/utils/logger.dart';
+import '../models/anime.dart';
+import '../models/anime_detail.dart';
+import '../models/episode.dart';
 import '../models/m3u8_models.dart';
 import 'm3u8_parser.dart';
 
@@ -144,6 +148,57 @@ class ScraperService {
     }
   }
 
+  /// Fetch anime details + episode list from series page
+  Future<AnimeDetail> fetchAnimeDetail(String seriesUrl, String animeId) async {
+    try {
+      final response = await _dio.get(
+        seriesUrl,
+        options: Options(headers: {'User-Agent': AppConstants.userAgent}),
+      );
+
+      if (response.statusCode != 200) {
+        throw ScraperException(message: 'Failed to fetch series page: HTTP ${response.statusCode}');
+      }
+
+      final document = html_parser.parse(response.data.toString());
+      final title = _extractSeriesTitle(document) ?? animeId.replaceAll('-', ' ');
+      final description = _extractDescription(document);
+      final coverUrl = _extractCoverUrl(document);
+      final bannerUrl = _extractBannerUrl(document);
+      final status = _extractMetaValue(document, ['status', 'status:']);
+      final type = _extractMetaValue(document, ['type', 'type:']);
+      final releaseYear = _extractMetaValue(document, ['year', 'released', 'release']);
+      final totalEpisodes = _extractTotalEpisodes(document);
+      final genres = _extractGenres(document);
+
+      final anime = Anime.create(
+        animeId: animeId,
+        title: title,
+        coverUrl: coverUrl,
+        bannerUrl: bannerUrl,
+        description: description,
+        status: status,
+        type: type,
+        releaseYear: releaseYear,
+        totalEpisodes: totalEpisodes,
+        genres: genres,
+      )
+        ..sourceUrl = seriesUrl;
+
+      final episodesBySeason = _extractEpisodesBySeason(document, animeId);
+
+      return AnimeDetail(anime: anime, episodesBySeason: episodesBySeason);
+    } catch (e, stack) {
+      AppLogger.e('Failed to fetch anime detail', e, stack);
+      if (e is ScraperException) rethrow;
+      throw ScraperException(
+        message: 'Failed to fetch anime detail: $e',
+        originalError: e,
+        stackTrace: stack,
+      );
+    }
+  }
+
   /// Fetch and parse master playlist
   Future<MasterPlaylist> fetchMasterPlaylist(ScraperResult scraperResult) async {
     try {
@@ -175,6 +230,160 @@ class ScraperService {
         stackTrace: stack,
       );
     }
+  }
+
+  String? _extractSeriesTitle(dynamic document) {
+    final title = document.querySelector('h1')?.text ??
+        document.querySelector('h2')?.text ??
+        document.querySelector('.entry-title')?.text ??
+        document.querySelector('title')?.text;
+    return title?.replaceAll(RegExp(r'\s+'), ' ').trim();
+  }
+
+  String? _extractDescription(dynamic document) {
+    final candidates = [
+      document.querySelector('.entry-content p'),
+      document.querySelector('.anime-details p'),
+      document.querySelector('.description'),
+    ];
+    for (final node in candidates) {
+      final text = node?.text?.trim();
+      if (text != null && text.isNotEmpty) {
+        return text;
+      }
+    }
+    return null;
+  }
+
+  String? _extractCoverUrl(dynamic document) {
+    final img = document.querySelector('img');
+    if (img == null) return null;
+    final raw = img.attributes['data-src'] ??
+        img.attributes['data-lazy-src'] ??
+        img.attributes['src'] ??
+        img.attributes['srcset'];
+    return _normalizeImageUrl(raw);
+  }
+
+  String? _extractBannerUrl(dynamic document) {
+    final banner = document.querySelector('.cover img') ?? document.querySelector('.banner img');
+    if (banner == null) return null;
+    final raw = banner.attributes['data-src'] ?? banner.attributes['src'];
+    return _normalizeImageUrl(raw);
+  }
+
+  String? _extractMetaValue(dynamic document, List<String> labels) {
+    final text = document.body?.text ?? '';
+    for (final label in labels) {
+      final regex = RegExp('${label}\s*:?\s*([^\n]+)', caseSensitive: false);
+      final match = regex.firstMatch(text);
+      if (match != null) {
+        return match.group(1)?.trim();
+      }
+    }
+    return null;
+  }
+
+  int? _extractTotalEpisodes(dynamic document) {
+    final text = document.body?.text ?? '';
+    final regex = RegExp(r'Episodes?\s*:?\s*(\d+)', caseSensitive: false);
+    final match = regex.firstMatch(text);
+    if (match != null) {
+      return int.tryParse(match.group(1) ?? '');
+    }
+    return null;
+  }
+
+  List<String> _extractGenres(dynamic document) {
+    final genres = <String>[];
+    final nodes = document.querySelectorAll('a');
+    for (final node in nodes) {
+      final href = node.attributes['href'] ?? '';
+      if (!href.contains('/genre/')) continue;
+      final text = node.text.trim();
+      if (text.isNotEmpty && !genres.contains(text)) {
+        genres.add(text);
+      }
+    }
+    return genres;
+  }
+
+  Map<String, List<Episode>> _extractEpisodesBySeason(dynamic document, String animeId) {
+    final seasons = <String, List<Episode>>{};
+    final episodeLinks = document.querySelectorAll('a');
+
+    // Pattern: /episode/$series-name-$seasonx$episode/
+    // Examples:
+    //   /episode/naruto-1x5/     -> Season 1, Episode 5
+    //   /episode/naruto-2x10/    -> Season 2, Episode 10
+    //   /episode/naruto-shippuden-3x15/ -> Season 3, Episode 15
+    //   /episode/naruto-5/       -> Season 1, Episode 5 (no season prefix)
+    final seasonEpisodeRegex = RegExp(r'-(\d+)x(\d+)/?$');
+    final episodeOnlyRegex = RegExp(r'-(\d+)/?$');
+
+    for (final link in episodeLinks) {
+      final href = link.attributes['href'] ?? '';
+      if (!href.contains('/episode/')) continue;
+
+      final title = link.text.trim();
+      if (title.isEmpty) continue;
+
+      int seasonNum = 1;
+      int episodeNum = 1;
+
+      // Try to match season x episode pattern first (e.g., -2x5)
+      final seasonMatch = seasonEpisodeRegex.firstMatch(href);
+      if (seasonMatch != null) {
+        seasonNum = int.tryParse(seasonMatch.group(1) ?? '1') ?? 1;
+        episodeNum = int.tryParse(seasonMatch.group(2) ?? '1') ?? 1;
+      } else {
+        // Fall back to episode-only pattern (e.g., -5)
+        final episodeMatch = episodeOnlyRegex.firstMatch(href);
+        if (episodeMatch != null) {
+          episodeNum = int.tryParse(episodeMatch.group(1) ?? '1') ?? 1;
+        }
+      }
+
+      final seasonKey = 'Season $seasonNum';
+
+      final episode = Episode.create(
+        animeId: animeId,
+        episodeNumber: episodeNum,
+        title: title,
+        sourceUrl: href,
+      );
+
+      seasons.putIfAbsent(seasonKey, () => []).add(episode);
+    }
+
+    // Sort episodes within each season by episode number
+    for (final seasonKey in seasons.keys) {
+      seasons[seasonKey]!.sort((a, b) => a.episodeNumber.compareTo(b.episodeNumber));
+    }
+
+    return seasons;
+  }
+
+  String? _normalizeImageUrl(String? url) {
+    if (url == null || url.trim().isEmpty) return null;
+    final trimmed = url.trim();
+    if (trimmed.startsWith('data:image')) return null;
+
+    final parts = trimmed.split(',');
+    final candidate = parts.first.trim();
+    final candidateParts = candidate.split(' ');
+    final rawUrl = candidateParts.first.trim();
+
+    if (rawUrl.startsWith('//')) {
+      return 'https:$rawUrl';
+    }
+    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+      return rawUrl;
+    }
+    if (rawUrl.startsWith('/')) {
+      return '${AppConstants.baseUrl}$rawUrl';
+    }
+    return '${AppConstants.baseUrl}/$rawUrl';
   }
 
   /// Fetch and parse media playlist (segment list)

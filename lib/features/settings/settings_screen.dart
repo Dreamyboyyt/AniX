@@ -126,13 +126,21 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Widget _buildStorageTile(BuildContext context, WidgetRef ref, AppSettings settings) {
+    final hasPermission = settings.storagePermissionGranted;
     return Card(
       child: ListTile(
         leading: const Icon(Icons.folder_outlined),
         title: const Text('Download Location'),
-        subtitle: Text(settings.downloadPath ?? 'Not set'),
-        trailing: const Icon(Icons.chevron_right),
-        onTap: () => _requestStoragePermission(context, ref),
+        subtitle: Text(settings.downloadPath ?? StorageService.defaultExternalPath),
+        trailing: hasPermission
+            ? const Icon(Icons.chevron_right)
+            : TextButton(
+                onPressed: () => _requestStoragePermission(context, ref),
+                child: const Text('Grant'),
+              ),
+        onTap: hasPermission
+            ? () => _showChangeDownloadPathDialog(context, ref, settings)
+            : () => _requestStoragePermission(context, ref),
       ),
     );
   }
@@ -309,15 +317,91 @@ class SettingsScreen extends ConsumerWidget {
   }
 
   Future<void> _requestStoragePermission(BuildContext context, WidgetRef ref) async {
-    final granted = await StorageService.instance.requestSafPermission();
+    final granted = await StorageService.instance.requestStoragePermission();
     if (granted) {
       ref.read(settingsProvider.notifier).refresh();
       if (context.mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Storage location set')),
+          const SnackBar(content: Text('Storage permission granted')),
         );
       }
     }
+  }
+
+  void _showChangeDownloadPathDialog(BuildContext context, WidgetRef ref, AppSettings settings) {
+    final controller = TextEditingController(
+      text: settings.downloadPath ?? StorageService.defaultExternalPath,
+    );
+
+    showDialog(
+      context: context,
+      builder: (context) => AlertDialog(
+        title: const Text('Download Location'),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            TextField(
+              controller: controller,
+              decoration: const InputDecoration(
+                labelText: 'Path',
+                hintText: '/storage/emulated/0/AniX',
+              ),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              'Default: ${StorageService.defaultExternalPath}',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: AppColors.draculaComment,
+                  ),
+            ),
+          ],
+        ),
+        actions: [
+          TextButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              await StorageService.instance.resetToDefaultPath();
+              ref.read(settingsProvider.notifier).refresh();
+              if (context.mounted) {
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(content: Text('Reset to default path')),
+                );
+              }
+            },
+            child: const Text('Reset'),
+          ),
+          TextButton(
+            onPressed: () => Navigator.pop(context),
+            child: const Text('Cancel'),
+          ),
+          FilledButton(
+            onPressed: () async {
+              Navigator.pop(context);
+              final path = controller.text.trim();
+              if (path.isNotEmpty) {
+                final success = await StorageService.instance.setCustomDownloadPath(path);
+                if (success) {
+                  ref.read(settingsProvider.notifier).refresh();
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Download path updated')),
+                    );
+                  }
+                } else {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('Failed to set download path')),
+                    );
+                  }
+                }
+              }
+            },
+            child: const Text('Save'),
+          ),
+        ],
+      ),
+    );
   }
 
   void _showClearCacheDialog(BuildContext context, WidgetRef ref) {

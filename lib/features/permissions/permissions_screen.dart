@@ -28,7 +28,7 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
 
   Future<void> _checkPermissions() async {
     final notificationStatus = await Permission.notification.status;
-    final storageStatus = await StorageService.instance.hasSafPermission();
+    final storageStatus = await StorageService.instance.hasStoragePermission();
 
     if (mounted) {
       setState(() {
@@ -175,7 +175,7 @@ class _PermissionsScreenState extends ConsumerState<PermissionsScreen> {
 
   Future<void> _requestStoragePermission() async {
     setState(() => _isLoading = true);
-    final granted = await StorageService.instance.requestSafPermission();
+    final granted = await StorageService.instance.requestStoragePermission();
     await ref.read(settingsProvider.notifier).refresh();
     if (mounted) {
       setState(() {

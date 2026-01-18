@@ -5,6 +5,7 @@ import '../data/database/repositories/episode_repository.dart';
 import '../data/database/repositories/download_repository.dart';
 import '../data/database/repositories/settings_repository.dart';
 import '../data/models/anime.dart';
+import '../data/models/anime_detail.dart';
 import '../data/models/episode.dart';
 import '../data/models/download_task.dart';
 import '../data/models/app_settings.dart';
@@ -114,8 +115,21 @@ final recentlyWatchedProvider = FutureProvider<List<Anime>>((ref) async {
   return ref.read(animeRepositoryProvider).getRecentlyWatched();
 });
 
-final animeDetailProvider = FutureProvider.family<Anime?, String>((ref, animeId) async {
-  return ref.read(animeRepositoryProvider).getByAnimeId(animeId);
+final animeDetailProvider = FutureProvider.family<AnimeDetail, Anime>((ref, anime) async {
+  if (anime.sourceUrl == null) {
+    return AnimeDetail(anime: anime, episodesBySeason: {});
+  }
+
+  final scraper = ref.read(scraperServiceProvider);
+  final detail = await scraper.fetchAnimeDetail(anime.sourceUrl!, anime.animeId);
+
+  await ref.read(animeRepositoryProvider).upsert(detail.anime);
+  final episodes = detail.episodesBySeason.values.expand((list) => list).toList();
+  if (episodes.isNotEmpty) {
+    await ref.read(episodeRepositoryProvider).saveAll(episodes);
+  }
+
+  return detail;
 });
 
 // ============ Episode Providers ============

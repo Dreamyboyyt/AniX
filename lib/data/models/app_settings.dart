@@ -19,7 +19,6 @@ class AppSettings {
   bool downloadOnWifiOnly = false;
   bool autoResumeDownloads = true;
 
-  String? safFolderUri;
   String? downloadPath;
 
   bool notificationPermissionGranted = false;
@@ -49,13 +48,13 @@ class AppSettings {
   }
 
   bool get canDownload => 
-      (storagePermissionGranted && safFolderUri != null) || 
+      (storagePermissionGranted && downloadPath != null) || 
       !permissionsSkipped;
 
   bool get hasAllPermissions => 
       notificationPermissionGranted && 
       storagePermissionGranted && 
-      safFolderUri != null;
+      downloadPath != null;
 }
 
 enum AppThemeMode {

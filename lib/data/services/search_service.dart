@@ -68,11 +68,34 @@ class SearchService {
           img.attributes['data-lazy-srcset'] ??
           img.attributes['srcset'] ??
           img.attributes['src'];
-      if (url != null && url.isNotEmpty) {
-        return url.split(' ').first;
+      final normalized = _normalizeImageUrl(url);
+      if (normalized != null) {
+        return normalized;
       }
     }
     return null;
+  }
+
+  String? _normalizeImageUrl(String? url) {
+    if (url == null || url.trim().isEmpty) return null;
+    final trimmed = url.trim();
+    if (trimmed.startsWith('data:image')) return null;
+
+    final parts = trimmed.split(',');
+    final candidate = parts.first.trim();
+    final candidateParts = candidate.split(' ');
+    final rawUrl = candidateParts.first.trim();
+
+    if (rawUrl.startsWith('//')) {
+      return 'https:$rawUrl';
+    }
+    if (rawUrl.startsWith('http://') || rawUrl.startsWith('https://')) {
+      return rawUrl;
+    }
+    if (rawUrl.startsWith('/')) {
+      return '${AppConstants.baseUrl}$rawUrl';
+    }
+    return '${AppConstants.baseUrl}/$rawUrl';
   }
 
   String? _extractAnimeId(String href) {

@@ -32,8 +32,17 @@ class CrashHandler {
 
     // Handle isolate errors
     Isolate.current.addErrorListener(RawReceivePort((pair) {
-      final List<dynamic> errorAndStacktrace = pair;
-      _saveCrashLog('Isolate Error: ${errorAndStacktrace[0]}\n${errorAndStacktrace[1]}');
+      try {
+        if (pair is List<dynamic> && pair.isNotEmpty) {
+          final error = pair[0];
+          final stack = pair.length > 1 ? pair[1] : 'No stack trace available';
+          _saveCrashLog('Isolate Error: $error\n$stack');
+        } else {
+          _saveCrashLog('Isolate Error: $pair');
+        }
+      } catch (e) {
+        _saveCrashLog('Isolate Error (failed to parse): $e');
+      }
     }).sendPort);
   }
 
