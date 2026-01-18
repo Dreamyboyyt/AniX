@@ -1,11 +1,14 @@
+import 'dart:io';
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:path_provider/path_provider.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/extensions.dart';
 import '../../core/utils/logger.dart';
 import '../../data/models/anime.dart';
 import '../../data/models/anime_detail.dart';
 import '../../data/models/episode.dart';
+import '../../data/services/m3u8_parser.dart';
 import '../../data/services/scraper_service.dart';
 import '../../providers/app_providers.dart';
 import '../../widgets/quality_selector_dialog.dart';
@@ -151,23 +154,44 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
           }
         }
         
-        // If there's a separate audio track, use the original master URL
-        // (media_kit can handle multi-track M3U8 playlists)
-        // Otherwise use the selected stream URL directly
-        if (selection.audioTrack != null || masterPlaylist.audioTracks.isNotEmpty) {
-          // Use original master playlist - media_kit will handle audio selection
-          videoUrl = scraperResult.m3u8Url;
-          AppLogger.i('Using master playlist for audio support: $videoUrl');
+        // Build custom master playlist with only selected video + audio
+        if (selection.audioTrack != null) {
+          // Has separate audio track - build custom master playlist
+          final customPlaylist = M3U8Parser.buildCustomMasterPlaylist(
+            videoStream: selection.videoStream,
+            audioTrack: selection.audioTrack,
+            baseDomain: masterPlaylist.baseDomain,
+          );
+          
+          // Write to temp file for media_kit to read
+          final tempDir = await getTemporaryDirectory();
+          final tempFile = File('${tempDir.path}/custom_master_${DateTime.now().millisecondsSinceEpoch}.m3u8');
+          await tempFile.writeAsString(customPlaylist);
+          videoUrl = tempFile.path;
+          
+          AppLogger.i('Created custom master playlist: $videoUrl');
+          AppLogger.d('Playlist content:\n$customPlaylist');
         } else {
+          // No separate audio - use video stream directly (audio is muxed)
           videoUrl = selection.videoStream.url;
-          AppLogger.i('Using direct video stream: $videoUrl');
+          AppLogger.i('Using direct video stream (muxed audio): $videoUrl');
         }
       } else if (masterPlaylist.videoStreams.isNotEmpty) {
-        // Single quality - check if it has muxed audio or needs master playlist
+        // Single quality - check if it has separate audio tracks
         if (masterPlaylist.audioTracks.isNotEmpty) {
-          // Has separate audio tracks, use master playlist
-          videoUrl = scraperResult.m3u8Url;
-          AppLogger.i('Single quality with audio tracks, using master: $videoUrl');
+          // Build custom playlist with first video + first audio
+          final customPlaylist = M3U8Parser.buildCustomMasterPlaylist(
+            videoStream: masterPlaylist.videoStreams.first,
+            audioTrack: masterPlaylist.audioTracks.first,
+            baseDomain: masterPlaylist.baseDomain,
+          );
+          
+          final tempDir = await getTemporaryDirectory();
+          final tempFile = File('${tempDir.path}/custom_master_${DateTime.now().millisecondsSinceEpoch}.m3u8');
+          await tempFile.writeAsString(customPlaylist);
+          videoUrl = tempFile.path;
+          
+          AppLogger.i('Single quality with audio, created custom playlist: $videoUrl');
         } else {
           // Single muxed stream, use directly
           videoUrl = masterPlaylist.videoStreams.first.url;
