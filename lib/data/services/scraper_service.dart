@@ -678,15 +678,6 @@ class ScraperService {
     return selection.videoStream.url;
   }
 
-  /// Convert cookies to Netscape format string
-  String _cookiesToNetscapeString(List<Cookie> cookies) {
-    final buffer = StringBuffer();
-    for (final cookie in cookies) {
-      buffer.write('${cookie.name}=${cookie.value}; ');
-    }
-    return buffer.toString().trim();
-  }
-
   /// Dispose service
   void dispose() {
     _dio.close();
