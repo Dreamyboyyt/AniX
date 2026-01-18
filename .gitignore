@@ -72,3 +72,10 @@ test-results/
 
 # Temporary files
 tmp_rovodev_*
+
+# AI Agent context files
+AGENTS.md
+AGENTS.local.md
+
+# This file itself (local only)
+.gitignore

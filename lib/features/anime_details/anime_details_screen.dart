@@ -151,11 +151,28 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
           }
         }
         
-        // Use the selected stream URL directly
-        videoUrl = selection.videoStream.url;
+        // If there's a separate audio track, use the original master URL
+        // (media_kit can handle multi-track M3U8 playlists)
+        // Otherwise use the selected stream URL directly
+        if (selection.audioTrack != null || masterPlaylist.audioTracks.isNotEmpty) {
+          // Use original master playlist - media_kit will handle audio selection
+          videoUrl = scraperResult.m3u8Url;
+          AppLogger.i('Using master playlist for audio support: $videoUrl');
+        } else {
+          videoUrl = selection.videoStream.url;
+          AppLogger.i('Using direct video stream: $videoUrl');
+        }
       } else if (masterPlaylist.videoStreams.isNotEmpty) {
-        // Single quality - use the first/only stream
-        videoUrl = masterPlaylist.videoStreams.first.url;
+        // Single quality - check if it has muxed audio or needs master playlist
+        if (masterPlaylist.audioTracks.isNotEmpty) {
+          // Has separate audio tracks, use master playlist
+          videoUrl = scraperResult.m3u8Url;
+          AppLogger.i('Single quality with audio tracks, using master: $videoUrl');
+        } else {
+          // Single muxed stream, use directly
+          videoUrl = masterPlaylist.videoStreams.first.url;
+          AppLogger.i('Single muxed stream: $videoUrl');
+        }
       }
 
       // Navigate to video player
