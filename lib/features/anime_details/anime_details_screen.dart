@@ -2,10 +2,13 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../core/theme/app_colors.dart';
 import '../../core/utils/extensions.dart';
+import '../../core/utils/logger.dart';
 import '../../data/models/anime.dart';
 import '../../data/models/anime_detail.dart';
 import '../../data/models/episode.dart';
+import '../../data/services/scraper_service.dart';
 import '../../providers/app_providers.dart';
+import '../player/video_player_screen.dart';
 
 class AnimeDetailsScreen extends ConsumerStatefulWidget {
   final Anime anime;
@@ -21,6 +24,8 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
   String? _selectedSeason;
   String _episodeSearchQuery = '';
   final TextEditingController _searchController = TextEditingController();
+  bool _isLoadingVideo = false;
+  String? _loadingEpisodeId;
 
   @override
   void dispose() {
@@ -31,10 +36,21 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final detail = ref.watch(animeDetailProvider(widget.anime));
+    final bookmarkedAnime = ref.watch(animeDetailProvider(widget.anime)).valueOrNull?.anime;
+    final isBookmarked = bookmarkedAnime?.isBookmarked ?? widget.anime.isBookmarked;
 
     return Scaffold(
       appBar: AppBar(
         title: Text(widget.anime.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        actions: [
+          IconButton(
+            icon: Icon(
+              isBookmarked ? Icons.bookmark : Icons.bookmark_border,
+              color: isBookmarked ? AppColors.draculaPink : null,
+            ),
+            onPressed: () => _toggleBookmark(bookmarkedAnime ?? widget.anime),
+          ),
+        ],
       ),
       body: detail.when(
         data: (animeDetail) => _buildContent(context, animeDetail),
@@ -42,6 +58,101 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
         error: (error, stack) => _buildError(context, error.toString()),
       ),
     );
+  }
+
+  Future<void> _toggleBookmark(Anime anime) async {
+    try {
+      final repository = ref.read(animeRepositoryProvider);
+      anime.isBookmarked = !anime.isBookmarked;
+      await repository.upsert(anime);
+      ref.invalidate(animeDetailProvider(widget.anime));
+      ref.invalidate(bookmarkedAnimeProvider);
+      
+      if (mounted) {
+        context.showSnackBar(
+          anime.isBookmarked ? 'Added to bookmarks' : 'Removed from bookmarks',
+        );
+      }
+    } catch (e) {
+      AppLogger.e('Failed to toggle bookmark', e);
+      if (mounted) {
+        context.showSnackBar('Failed to update bookmark');
+      }
+    }
+  }
+
+  Future<void> _playEpisode(Episode episode, Anime anime) async {
+    if (episode.sourceUrl == null) {
+      context.showSnackBar('Episode URL not available');
+      return;
+    }
+
+    final episodeId = '${episode.animeId}-${episode.episodeNumber}';
+    
+    setState(() {
+      _isLoadingVideo = true;
+      _loadingEpisodeId = episodeId;
+    });
+
+    try {
+      // Show loading dialog
+      if (mounted) {
+        showDialog(
+          context: context,
+          barrierDismissible: false,
+          builder: (context) => AlertDialog(
+            content: Row(
+              children: [
+                const CircularProgressIndicator(),
+                const SizedBox(width: 16),
+                Expanded(
+                  child: Text('Loading Episode ${episode.episodeNumber}...'),
+                ),
+              ],
+            ),
+          ),
+        );
+      }
+
+      // Sniff the M3U8 URL from the episode page
+      final scraperResult = await ScraperService.instance.sniffM3u8Url(episode.sourceUrl!);
+      
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+      }
+
+      // Navigate to video player
+      if (mounted) {
+        Navigator.of(context).push(
+          MaterialPageRoute(
+            builder: (context) => VideoPlayerScreen(
+              animeId: anime.animeId,
+              animeTitle: anime.title,
+              episodeNumber: episode.episodeNumber,
+              episodeTitle: episode.title,
+              videoUrl: scraperResult.m3u8Url,
+              startPosition: episode.watchedPosition > 0 ? episode.watchedPosition : null,
+            ),
+          ),
+        );
+      }
+    } catch (e) {
+      AppLogger.e('Failed to load episode', e);
+      
+      // Close loading dialog
+      if (mounted) {
+        Navigator.of(context).pop();
+        context.showSnackBar('Failed to load video: ${e.toString()}');
+      }
+    } finally {
+      if (mounted) {
+        setState(() {
+          _isLoadingVideo = false;
+          _loadingEpisodeId = null;
+        });
+      }
+    }
   }
 
   Widget _buildContent(BuildContext context, AnimeDetail detail) {
@@ -191,7 +302,11 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
             ),
           )
         else
-          ...episodes.map((episode) => _EpisodeTile(episode: episode)),
+          ...episodes.map((episode) => _EpisodeTile(
+            episode: episode,
+            isLoading: _loadingEpisodeId == '${episode.animeId}-${episode.episodeNumber}',
+            onTap: () => _playEpisode(episode, detail.anime),
+          )),
       ],
     );
   }
@@ -316,21 +431,80 @@ class _AnimeDetailsScreenState extends ConsumerState<AnimeDetailsScreen> {
 
 class _EpisodeTile extends StatelessWidget {
   final Episode episode;
+  final bool isLoading;
+  final VoidCallback onTap;
 
-  const _EpisodeTile({required this.episode});
+  const _EpisodeTile({
+    required this.episode,
+    required this.isLoading,
+    required this.onTap,
+  });
 
   @override
   Widget build(BuildContext context) {
+    final hasProgress = episode.watchProgress > 0 && episode.watchProgress < 1;
+    
     return ListTile(
       contentPadding: EdgeInsets.zero,
-      title: Text('Episode ${episode.episodeNumber}: ${episode.title}'),
-      subtitle: episode.duration != null
-          ? Text('Duration: ${episode.duration!.formatDuration}')
-          : null,
-      trailing: const Icon(Icons.play_circle_outline),
-      onTap: () {
-        context.showSnackBar('Play ${episode.title}');
-      },
+      leading: Stack(
+        alignment: Alignment.center,
+        children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(
+              color: episode.isWatched 
+                  ? AppColors.draculaGreen.withValues(alpha: 0.2)
+                  : AppColors.draculaPurple.withValues(alpha: 0.2),
+              borderRadius: BorderRadius.circular(8),
+            ),
+            child: Center(
+              child: Text(
+                '${episode.episodeNumber}',
+                style: TextStyle(
+                  fontWeight: FontWeight.bold,
+                  color: episode.isWatched ? AppColors.draculaGreen : AppColors.draculaPurple,
+                ),
+              ),
+            ),
+          ),
+          if (episode.isWatched)
+            const Positioned(
+              right: 0,
+              bottom: 0,
+              child: Icon(Icons.check_circle, size: 16, color: AppColors.draculaGreen),
+            ),
+        ],
+      ),
+      title: Text(
+        episode.title,
+        maxLines: 1,
+        overflow: TextOverflow.ellipsis,
+      ),
+      subtitle: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (episode.duration != null)
+            Text('Duration: ${episode.duration!.formatDuration}'),
+          if (hasProgress)
+            Padding(
+              padding: const EdgeInsets.only(top: 4),
+              child: LinearProgressIndicator(
+                value: episode.watchProgress,
+                backgroundColor: AppColors.draculaComment.withValues(alpha: 0.3),
+                valueColor: const AlwaysStoppedAnimation<Color>(AppColors.draculaPink),
+              ),
+            ),
+        ],
+      ),
+      trailing: isLoading
+          ? const SizedBox(
+              width: 24,
+              height: 24,
+              child: CircularProgressIndicator(strokeWidth: 2),
+            )
+          : const Icon(Icons.play_circle_outline, color: AppColors.draculaPink),
+      onTap: isLoading ? null : onTap,
     );
   }
 }
