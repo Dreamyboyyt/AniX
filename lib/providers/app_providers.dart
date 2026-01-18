@@ -60,8 +60,8 @@ class SettingsNotifier extends StateNotifier<AppSettings?> {
     state = await _repository.getSettings();
   }
 
-  Future<void> setSafFolder(String? uri, String? path) async {
-    await _repository.setSafFolder(uri, path);
+  Future<void> setDownloadPath(String path) async {
+    await _repository.setDownloadPath(path);
     state = await _repository.getSettings();
   }
 
